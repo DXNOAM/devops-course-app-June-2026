@@ -5,31 +5,17 @@ metadata:
   name: {{ include "flask-aws-monitor.fullname" . }}
   labels:
     {{- include "flask-aws-monitor.labels" . | nindent 4 }}
-  {{- with .Values.ingress.annotations }}
-  annotations:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
 spec:
-  {{- with .Values.ingress.className }}
-  ingressClassName: {{ . }}
-  {{- end }}
-  {{- with .Values.ingress.tls }}
-  tls:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
+  ingressClassName: {{ required "ingress.class_name is required when ingress is enabled" .Values.ingress.class_name | quote }}
   rules:
-    {{- range .Values.ingress.hosts }}
-    - host: {{ .host | quote }}
+    - host: {{ required "ingress.host is required when ingress is enabled" .Values.ingress.host | quote }}
       http:
         paths:
-          {{- range .paths }}
-          - path: {{ .path }}
-            pathType: {{ .pathType }}
+          - path: /
+            pathType: Prefix
             backend:
               service:
-                name: {{ include "flask-aws-monitor.fullname" $ }}
+                name: {{ include "flask-aws-monitor.fullname" . }}
                 port:
-                  name: http
-          {{- end }}
-    {{- end }}
+                  number: {{ .Values.pod.port }}
 {{- end }}

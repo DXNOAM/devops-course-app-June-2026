@@ -88,9 +88,9 @@ docker.io/library/flask-aws-monitor:local
 
 ```bash
 helm lint ./helmchart
-helm template flask-monitor ./helmchart --values ./helmchart/minikube-values.yaml
+helm template flask-monitor ./helmchart
 
-helm upgrade --install flask-monitor ./helmchart --reset-values --values ./helmchart/minikube-values.yaml
+helm upgrade --install flask-monitor ./helmchart --reset-values
 ```
 
 The informational message `Chart.yaml: icon is recommended` from `helm lint`
@@ -125,7 +125,7 @@ A `LoadBalancer` Service keeps its internal `ClusterIP` access and also adds an
 external address. Install or update the release with:
 
 ```bash
-helm upgrade --install flask-monitor ./helmchart --reset-values --values ./helmchart/minikube-values.yaml --set service.type=LoadBalancer
+helm upgrade --install flask-monitor ./helmchart --reset-values --set service_type=LoadBalancer
 ```
 
 Run the Minikube tunnel in a separate terminal and keep it open:
@@ -159,6 +159,35 @@ minikube tunnel --cleanup --alsologtostderr -v=4
 ```
 
 The tunnel must remain running while the external address is in use.
+
+### 7. Optional: expose the application with Ingress
+
+An Ingress controller is required. For Minikube, enable its Ingress addon:
+
+```bash
+minikube addons enable ingress
+```
+
+Enable the chart's Ingress resource:
+
+```bash
+helm upgrade --install flask-monitor ./helmchart --reset-values --set ingress.enabled=true
+```
+
+Wait for the Ingress to become ready:
+
+```bash
+kubectl get ingress flask-monitor-flask-aws-monitor --watch
+```
+
+The default hostname is `flask-monitor.local`. Get the Minikube IP with
+`minikube ip`, then map that IP to `flask-monitor.local` in the system hosts
+file. The hosts file is usually `/etc/hosts` on Linux and macOS, and
+`C:\Windows\System32\drivers\etc\hosts` on Windows.
+
+Open <http://flask-monitor.local> after the hostname resolves to the Ingress
+address. Ingress availability depends on the Minikube driver and operating
+system.
 
 ## Deploy an updated application version
 

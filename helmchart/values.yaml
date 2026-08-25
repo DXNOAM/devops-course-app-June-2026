@@ -1,67 +1,15 @@
-replicaCount: 2
+# service_type should be NodePort, ClusterIP, or LoadBalancer.
+service_type: ClusterIP
+replicas: 2
 
-image:
-  repository: your-dockerhub-username/flask-aws-monitor
-  pullPolicy: Always
-  tag: latest
-
-imagePullSecrets: []
-nameOverride: ""
-fullnameOverride: ""
-
-podAnnotations: {}
-podLabels: {}
-
-podSecurityContext:
-  fsGroup: 10001
-  fsGroupChangePolicy: OnRootMismatch
-
-securityContext:
-  allowPrivilegeEscalation: false
-  capabilities:
-    drop:
-      - ALL
-  readOnlyRootFilesystem: true
-  runAsNonRoot: true
-  runAsUser: 10001
-  runAsGroup: 10001
-
-service:
-  type: ClusterIP
+pod:
+  image: flask-aws-monitor
+  tag: local
+  pull_policy: IfNotPresent
+  target_port: 5001
   port: 5001
-  targetPort: 5001
 
 ingress:
   enabled: false
-  className: ""
-  annotations: {}
-  hosts:
-    - host: flask-monitor.local
-      paths:
-        - path: /
-          pathType: Prefix
-  tls: []
-
-resources:
-  requests:
-    cpu: 100m
-    memory: 128Mi
-  limits:
-    cpu: 250m
-    memory: 256Mi
-
-probes:
-  readiness:
-    initialDelaySeconds: 3
-    periodSeconds: 10
-    timeoutSeconds: 2
-    failureThreshold: 3
-  liveness:
-    initialDelaySeconds: 10
-    periodSeconds: 20
-    timeoutSeconds: 2
-    failureThreshold: 3
-
-nodeSelector: {}
-tolerations: []
-affinity: {}
+  class_name: nginx
+  host: flask-monitor.local

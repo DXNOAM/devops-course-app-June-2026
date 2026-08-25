@@ -1,7 +1,7 @@
 The Hello DevOps Flask application has been deployed.
 
 Release: {{ .Release.Name }}
-Image:   {{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}
+Image:   {{ .Values.pod.image }}:{{ .Values.pod.tag | default .Chart.AppVersion }}
 
 1. Wait for the Deployment to become ready:
 
@@ -15,11 +15,14 @@ Image:   {{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.Ap
 3. Access the application:
 
 {{- if .Values.ingress.enabled }}
-   The Ingress is enabled. Configure DNS or /etc/hosts for the configured host:
-{{- range .Values.ingress.hosts }}
-   http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}
-{{- end }}
-{{- else if eq .Values.service.type "LoadBalancer" }}
+   Ingress is enabled for this host:
+
+   http://{{ .Values.ingress.host }}
+
+   Ensure an Ingress controller is installed, then check its status:
+
+   kubectl get ingress {{ include "flask-aws-monitor.fullname" . }} --watch
+{{- else if eq .Values.service_type "LoadBalancer" }}
    On Minikube, run this command in a separate terminal:
 
    minikube tunnel
@@ -27,16 +30,16 @@ Image:   {{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.Ap
    Then wait for the external IP:
 
    kubectl get service {{ include "flask-aws-monitor.fullname" . }} --watch
-{{- else if eq .Values.service.type "NodePort" }}
+{{- else if eq .Values.service_type "NodePort" }}
    On Minikube, get the service URL:
 
    minikube service {{ include "flask-aws-monitor.fullname" . }} --url
 {{- else }}
    Forward the ClusterIP Service in a separate terminal:
 
-   kubectl port-forward service/{{ include "flask-aws-monitor.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }}
+   kubectl port-forward service/{{ include "flask-aws-monitor.fullname" . }} {{ .Values.pod.port }}:{{ .Values.pod.port }}
 
-   Open http://127.0.0.1:{{ .Values.service.port }}/
+   Open http://127.0.0.1:{{ .Values.pod.port }}/
 {{- end }}
 
 4. Check the health endpoint by appending this path to the application URL:
