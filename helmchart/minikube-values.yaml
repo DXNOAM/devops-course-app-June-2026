@@ -1,0 +1,5 @@
+# Values for running the application with a locally built Minikube image.
+image:
+  repository: flask-aws-monitor
+  tag: local
+  pullPolicy: IfNotPresent

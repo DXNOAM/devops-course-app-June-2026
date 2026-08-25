@@ -1,0 +1,44 @@
+The Hello DevOps Flask application has been deployed.
+
+Release: {{ .Release.Name }}
+Image:   {{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}
+
+1. Wait for the Deployment to become ready:
+
+   kubectl rollout status deployment/{{ include "flask-aws-monitor.fullname" . }}
+
+2. Check the application Pods and Service:
+
+   kubectl get pods -l app.kubernetes.io/instance={{ .Release.Name }}
+   kubectl get service {{ include "flask-aws-monitor.fullname" . }}
+
+3. Access the application:
+
+{{- if .Values.ingress.enabled }}
+   The Ingress is enabled. Configure DNS or /etc/hosts for the configured host:
+{{- range .Values.ingress.hosts }}
+   http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}
+{{- end }}
+{{- else if eq .Values.service.type "LoadBalancer" }}
+   On Minikube, run this command in a separate terminal:
+
+   minikube tunnel
+
+   Then wait for the external IP:
+
+   kubectl get service {{ include "flask-aws-monitor.fullname" . }} --watch
+{{- else if eq .Values.service.type "NodePort" }}
+   On Minikube, get the service URL:
+
+   minikube service {{ include "flask-aws-monitor.fullname" . }} --url
+{{- else }}
+   Forward the ClusterIP Service in a separate terminal:
+
+   kubectl port-forward service/{{ include "flask-aws-monitor.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }}
+
+   Open http://127.0.0.1:{{ .Values.service.port }}/
+{{- end }}
+
+4. Check the health endpoint by appending this path to the application URL:
+
+   /health
