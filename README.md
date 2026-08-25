@@ -10,18 +10,33 @@ the `helmchart` Helm chart.
 
 The application listens on port `5001` by default.
 
-## Run directly on Ubuntu
+## Run directly with Python
 
-From the project directory:
+Python 3 with `venv` support is required. From the project root, create a
+virtual environment:
 
 ```bash
-sudo apt update
-sudo apt install -y python3 python3-venv python3-pip
+python -m venv .venv
+```
 
-python3 -m venv .venv
+Use `python3` instead of `python` if that is the Python executable on your
+system. Activate the virtual environment on Linux or macOS:
+
+```bash
 source .venv/bin/activate
+```
+
+Or activate it in Windows PowerShell:
+
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+Then install the dependencies and run the application:
+
+```bash
 python -m pip install -r requirements.txt
-PORT=5001 python app.py
+python app.py
 ```
 
 Open <http://localhost:5001> or test from the terminal:
@@ -41,17 +56,13 @@ docker run --rm -p 5001:5001 flask-aws-monitor:local
 ## Deploy locally with Minikube and Helm
 
 Run every command in this section from the directory that contains
-`Dockerfile`, `app.py`, and `helmchart`. For the path shown in the Ubuntu
-screenshots:
-
-```bash
-cd "$HOME/Devops Project/app for devops"
-```
+`Dockerfile`, `app.py`, and `helmchart` (the project root). Ensure Docker,
+Minikube, `kubectl`, and Helm are installed before continuing.
 
 ### 1. Start and verify Minikube
 
 ```bash
-sudo systemctl start docker
+docker info
 minikube start --driver=docker
 minikube update-context
 kubectl config use-context minikube
@@ -64,7 +75,7 @@ The Minikube node must show `Ready` before continuing.
 
 ```bash
 minikube image build -t flask-aws-monitor:local .
-minikube image ls | grep flask-aws-monitor
+minikube image ls
 ```
 
 Expected image:
@@ -77,12 +88,9 @@ docker.io/library/flask-aws-monitor:local
 
 ```bash
 helm lint ./helmchart
-helm template flask-monitor ./helmchart \
-  --values ./helmchart/minikube-values.yaml
+helm template flask-monitor ./helmchart --values ./helmchart/minikube-values.yaml
 
-helm upgrade --install flask-monitor ./helmchart \
-  --reset-values \
-  --values ./helmchart/minikube-values.yaml
+helm upgrade --install flask-monitor ./helmchart --reset-values --values ./helmchart/minikube-values.yaml
 ```
 
 The informational message `Chart.yaml: icon is recommended` from `helm lint`
@@ -91,8 +99,7 @@ is not an error.
 ### 4. Verify the Deployment
 
 ```bash
-kubectl get deployment flask-monitor-flask-aws-monitor \
-  -o jsonpath='{.spec.template.spec.containers[0].image}{" "}{.spec.template.spec.containers[0].imagePullPolicy}{"\n"}'
+kubectl get deployment flask-monitor-flask-aws-monitor -o jsonpath='{.spec.template.spec.containers[0].image}{" "}{.spec.template.spec.containers[0].imagePullPolicy}{"\n"}'
 
 kubectl get pods
 kubectl rollout status deployment/flask-monitor-flask-aws-monitor
@@ -107,9 +114,7 @@ flask-aws-monitor:local IfNotPresent
 ### 5. Access the application using ClusterIP
 
 ```bash
-kubectl port-forward \
-  service/flask-monitor-flask-aws-monitor \
-  5001:5001
+kubectl port-forward service/flask-monitor-flask-aws-monitor 5001:5001
 ```
 
 Keep that terminal open and browse to <http://localhost:5001>.
@@ -120,10 +125,7 @@ A `LoadBalancer` Service keeps its internal `ClusterIP` access and also adds an
 external address. Install or update the release with:
 
 ```bash
-helm upgrade --install flask-monitor ./helmchart \
-  --reset-values \
-  --values ./helmchart/minikube-values.yaml \
-  --set service.type=LoadBalancer
+helm upgrade --install flask-monitor ./helmchart --reset-values --values ./helmchart/minikube-values.yaml --set service.type=LoadBalancer
 ```
 
 Run the Minikube tunnel in a separate terminal and keep it open:
@@ -132,23 +134,21 @@ Run the Minikube tunnel in a separate terminal and keep it open:
 minikube tunnel
 ```
 
-Enter the Ubuntu password if requested. In another terminal, wait for the
-external address:
+Enter your administrator password if requested. In another terminal, wait for
+the external address:
 
 ```bash
 kubectl get service flask-monitor-flask-aws-monitor --watch
 ```
 
 When the `EXTERNAL-IP` column is no longer `<pending>`, press `Ctrl+C` to stop
-watching and print the application URL:
+watching. Replace `YOUR_EXTERNAL_IP` below with the displayed address:
 
 ```bash
-EXTERNAL_IP=$(kubectl get service flask-monitor-flask-aws-monitor \
-  -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-
-echo "http://${EXTERNAL_IP}:5001"
-curl "http://${EXTERNAL_IP}:5001/health"
+curl http://YOUR_EXTERNAL_IP:5001/health
 ```
+
+Open `http://YOUR_EXTERNAL_IP:5001` in a browser.
 
 If `EXTERNAL-IP` remains `<pending>`, confirm that `minikube tunnel` is still
 running. Stop a failed tunnel with `Ctrl+C`, then restart it with diagnostic
@@ -171,28 +171,12 @@ kubectl rollout restart deployment/flask-monitor-flask-aws-monitor
 kubectl rollout status deployment/flask-monitor-flask-aws-monitor
 ```
 
-## Deploy with an image from Docker Hub
-
-Replace `DOCKERHUB_USERNAME` with your Docker Hub username:
-
-```bash
-docker build -t DOCKERHUB_USERNAME/flask-aws-monitor:latest .
-docker login
-docker push DOCKERHUB_USERNAME/flask-aws-monitor:latest
-
-helm upgrade --install flask-monitor ./helmchart \
-  --reset-values \
-  --set-string image.repository=DOCKERHUB_USERNAME/flask-aws-monitor \
-  --set-string image.tag=latest \
-  --set image.pullPolicy=Always
-```
-
 ## Troubleshooting
 
 If Kubernetes is unreachable:
 
 ```bash
-sudo systemctl start docker
+docker info
 minikube start --driver=docker
 minikube update-context
 kubectl config use-context minikube
@@ -202,17 +186,15 @@ kubectl get nodes
 If a Pod shows `ImagePullBackOff`, compare the available and configured images:
 
 ```bash
-minikube image ls | grep flask-aws-monitor
-kubectl get deployment flask-monitor-flask-aws-monitor \
-  -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}'
+minikube image ls
+kubectl get deployment flask-monitor-flask-aws-monitor -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}'
 ```
 
 If a Pod shows `CrashLoopBackOff`, inspect its events and previous logs:
 
 ```bash
 kubectl describe pods -l app.kubernetes.io/instance=flask-monitor
-kubectl logs -l app.kubernetes.io/instance=flask-monitor \
-  --all-containers=true --prefix --previous --tail=100
+kubectl logs -l app.kubernetes.io/instance=flask-monitor --all-containers=true --prefix --previous --tail=100
 ```
 
 The chart keeps the container root filesystem read-only and mounts a writable
