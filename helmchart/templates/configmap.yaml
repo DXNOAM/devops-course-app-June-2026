@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-cm
+  labels:
+    {{- include "flask-aws-monitor.labels" . | nindent 4 }}
+data:
+  PORT: {{ .Values.pod.target_port | quote }}
+  GUNICORN_WORKERS: {{ .Values.config.gunicorn_workers | quote }}
+  GUNICORN_THREADS: {{ .Values.config.gunicorn_threads | quote }}

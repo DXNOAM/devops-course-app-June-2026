@@ -9,6 +9,10 @@ pod:
   target_port: 5001
   port: 5001
 
+config:
+  gunicorn_workers: 2
+  gunicorn_threads: 4
+
 ingress:
   enabled: false
   class_name: nginx

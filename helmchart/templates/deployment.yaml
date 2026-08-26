@@ -1,70 +1,27 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "flask-aws-monitor.fullname" . }}
+  name: {{ .Release.Name }}
   labels:
     {{- include "flask-aws-monitor.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.replicas }}
-  revisionHistoryLimit: 3
   selector:
     matchLabels:
-      {{- include "flask-aws-monitor.selectorLabels" . | nindent 6 }}
+      app: {{ .Release.Name }}
+  replicas: {{ .Values.replicas }}
   template:
     metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
       labels:
-        {{- include "flask-aws-monitor.selectorLabels" . | nindent 8 }}
+        {{- include "flask-aws-monitor.labels" . | nindent 8 }}
     spec:
-      automountServiceAccountToken: false
-      securityContext:
-        fsGroup: 10001
-        fsGroupChangePolicy: OnRootMismatch
       containers:
-        - name: {{ .Chart.Name }}
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
-            readOnlyRootFilesystem: true
-            runAsNonRoot: true
-            runAsUser: 10001
-            runAsGroup: 10001
+        - name: {{ .Release.Name }}
           image: "{{ .Values.pod.image }}:{{ .Values.pod.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.pod.pull_policy }}
           ports:
-            - name: http
-              containerPort: {{ .Values.pod.target_port }}
-              protocol: TCP
-          env:
-            - name: PORT
-              value: {{ .Values.pod.target_port | quote }}
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: http
-            initialDelaySeconds: 3
-            periodSeconds: 10
-            timeoutSeconds: 2
-            failureThreshold: 3
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: http
-            initialDelaySeconds: 10
-            periodSeconds: 20
-            timeoutSeconds: 2
-            failureThreshold: 3
-          resources:
-            requests:
-              cpu: 100m
-              memory: 128Mi
-            limits:
-              cpu: 250m
-              memory: 256Mi
-          volumeMounts:
-            - name: tmp
-              mountPath: /tmp
-      volumes:
-        - name: tmp
-          emptyDir: {}
+            - containerPort: {{ .Values.pod.target_port }}
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-cm

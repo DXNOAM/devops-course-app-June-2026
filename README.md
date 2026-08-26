@@ -6,7 +6,7 @@ the `helmchart` Helm chart.
 ## Endpoints
 
 - `GET /` - displays `Hello DevOps World!`
-- `GET /health` - liveness and readiness endpoint
+- `GET /health` - health-check endpoint
 
 The application listens on port `5001` by default.
 
@@ -99,10 +99,11 @@ is not an error.
 ### 4. Verify the Deployment
 
 ```bash
-kubectl get deployment flask-monitor-flask-aws-monitor -o jsonpath='{.spec.template.spec.containers[0].image}{" "}{.spec.template.spec.containers[0].imagePullPolicy}{"\n"}'
+kubectl get deployment flask-monitor -o jsonpath='{.spec.template.spec.containers[0].image}{" "}{.spec.template.spec.containers[0].imagePullPolicy}{"\n"}'
 
 kubectl get pods
-kubectl rollout status deployment/flask-monitor-flask-aws-monitor
+kubectl get configmap flask-monitor-cm
+kubectl rollout status deployment/flask-monitor
 ```
 
 The expected image configuration is:
@@ -111,10 +112,21 @@ The expected image configuration is:
 flask-aws-monitor:local IfNotPresent
 ```
 
+The `flask-monitor-cm` ConfigMap supplies `PORT`, `GUNICORN_WORKERS`, and
+`GUNICORN_THREADS` to the container. To update the Gunicorn configuration
+while preserving the current Service and Ingress settings, run for example:
+
+```bash
+helm upgrade flask-monitor ./helmchart --reuse-values --set config.gunicorn_workers=3 --set config.gunicorn_threads=4
+```
+
+The Deployment checksum changes automatically when the ConfigMap changes, so
+Helm creates replacement Pods with the updated environment variables.
+
 ### 5. Access the application using ClusterIP
 
 ```bash
-kubectl port-forward service/flask-monitor-flask-aws-monitor 5001:5001
+kubectl port-forward service/flask-monitor 5001:5001
 ```
 
 Keep that terminal open and browse to <http://localhost:5001>.
@@ -138,7 +150,7 @@ Enter your administrator password if requested. In another terminal, wait for
 the external address:
 
 ```bash
-kubectl get service flask-monitor-flask-aws-monitor --watch
+kubectl get service flask-monitor --watch
 ```
 
 When the `EXTERNAL-IP` column is no longer `<pending>`, press `Ctrl+C` to stop
@@ -177,7 +189,7 @@ helm upgrade --install flask-monitor ./helmchart --reset-values --set ingress.en
 Wait for the Ingress to become ready:
 
 ```bash
-kubectl get ingress flask-monitor-flask-aws-monitor --watch
+kubectl get ingress flask-monitor --watch
 ```
 
 The default hostname is `flask-monitor.local`. Get the Minikube IP with
@@ -196,8 +208,8 @@ Deployment:
 
 ```bash
 minikube image build -t flask-aws-monitor:local .
-kubectl rollout restart deployment/flask-monitor-flask-aws-monitor
-kubectl rollout status deployment/flask-monitor-flask-aws-monitor
+kubectl rollout restart deployment/flask-monitor
+kubectl rollout status deployment/flask-monitor
 ```
 
 ## Troubleshooting
@@ -216,18 +228,15 @@ If a Pod shows `ImagePullBackOff`, compare the available and configured images:
 
 ```bash
 minikube image ls
-kubectl get deployment flask-monitor-flask-aws-monitor -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}'
+kubectl get deployment flask-monitor -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}'
 ```
 
 If a Pod shows `CrashLoopBackOff`, inspect its events and previous logs:
 
 ```bash
-kubectl describe pods -l app.kubernetes.io/instance=flask-monitor
-kubectl logs -l app.kubernetes.io/instance=flask-monitor --all-containers=true --prefix --previous --tail=100
+kubectl describe pods -l app=flask-monitor
+kubectl logs -l app=flask-monitor --all-containers=true --prefix --previous --tail=100
 ```
-
-The chart keeps the container root filesystem read-only and mounts a writable
-temporary `emptyDir` volume at `/tmp` for Gunicorn.
 
 ## Upgrade and rollback
 

@@ -2,7 +2,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "flask-aws-monitor.fullname" . }}
+  name: {{ .Release.Name }}
   labels:
     {{- include "flask-aws-monitor.labels" . | nindent 4 }}
 spec:
@@ -15,7 +15,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ include "flask-aws-monitor.fullname" . }}
+                name: {{ .Release.Name }}
                 port:
                   number: {{ .Values.pod.port }}
 {{- end }}
