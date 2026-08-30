@@ -14,10 +14,23 @@ pipeline {
             }
         }
         
-        stage('Test') {
-            steps {
-                echo 'Testing...'
-                // Test steps here
+        // שלב הבדיקות שונה כדי להריץ משימות במקביל
+        stage('Parallel Tests') {
+            // הוספת failFast מומלצת: אם בדיקה אחת נכשלת, הכל נעצר כדי לחסוך משאבים
+            failFast true 
+            parallel {
+                stage('Unit Tests') {
+                    steps {
+                        echo 'Running Unit Tests...'
+                        // פקודות עבור Unit Tests (למשל pytest)
+                    }
+                }
+                stage('Security & Linting') {
+                    steps {
+                        echo 'Running Code Analysis and Security Scans...'
+                        // פקודות עבור סריקות קוד (למשל flake8 או סריקות אבטחה)
+                    }
+                }
             }
         }
         
