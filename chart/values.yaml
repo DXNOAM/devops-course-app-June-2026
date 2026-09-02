@@ -1,0 +1,19 @@
+# service_type should be NodePort, ClusterIP, or LoadBalancer.
+service_type: ClusterIP
+replicas: 2
+
+pod:
+  image: flask-aws-monitor
+  tag: local
+  pull_policy: IfNotPresent
+  target_port: 5001
+  port: 5001
+
+config:
+  gunicorn_workers: 2
+  gunicorn_threads: 4
+
+ingress:
+  enabled: false
+  class_name: nginx
+  host: flask-monitor.local

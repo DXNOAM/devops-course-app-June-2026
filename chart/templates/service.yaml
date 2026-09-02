@@ -1,0 +1,19 @@
+{{- if not (has .Values.service_type (list "NodePort" "ClusterIP" "LoadBalancer")) }}
+{{- fail "service_type must be NodePort, ClusterIP, or LoadBalancer" }}
+{{- end }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    app: {{ .Release.Name }}
+    {{- include "flask-aws-monitor.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: {{ .Release.Name }}
+  type: {{ .Values.service_type }}
+  ports:
+    - name: http
+      protocol: TCP
+      port: {{ .Values.pod.port }}
+      targetPort: {{ .Values.pod.target_port }}

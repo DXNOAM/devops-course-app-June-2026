@@ -1,0 +1,48 @@
+The Hello DevOps Flask application has been deployed.
+
+Release: {{ .Release.Name }}
+Image:   {{ .Values.pod.image }}:{{ .Values.pod.tag | default .Chart.AppVersion }}
+
+1. Wait for the Deployment to become ready:
+
+   kubectl rollout status deployment/{{ .Release.Name }}
+
+2. Check the application Pods, Service, and ConfigMap:
+
+   kubectl get pods -l app={{ .Release.Name }}
+   kubectl get service {{ .Release.Name }}
+   kubectl get configmap {{ .Release.Name }}-cm
+
+3. Access the application:
+
+{{- if .Values.ingress.enabled }}
+   Ingress is enabled for this host:
+
+   http://{{ .Values.ingress.host }}
+
+   Ensure an Ingress controller is installed, then check its status:
+
+   kubectl get ingress {{ .Release.Name }} --watch
+{{- else if eq .Values.service_type "LoadBalancer" }}
+   On Minikube, run this command in a separate terminal:
+
+   minikube tunnel
+
+   Then wait for the external IP:
+
+   kubectl get service {{ .Release.Name }} --watch
+{{- else if eq .Values.service_type "NodePort" }}
+   On Minikube, get the service URL:
+
+   minikube service {{ .Release.Name }} --url
+{{- else }}
+   Forward the ClusterIP Service in a separate terminal:
+
+   kubectl port-forward service/{{ .Release.Name }} {{ .Values.pod.port }}:{{ .Values.pod.port }}
+
+   Open http://127.0.0.1:{{ .Values.pod.port }}/
+{{- end }}
+
+4. Check the health endpoint by appending this path to the application URL:
+
+   /health

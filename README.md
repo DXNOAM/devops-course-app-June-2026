@@ -1,49 +1,27 @@
 # Hello DevOps Flask Application
 
 A small Flask application packaged with Docker and deployed to Kubernetes with
-the `helmchart` Helm chart.
+the `chart` Helm chart.
 
 ## Endpoints
 
 - `GET /` - displays `Hello DevOps World!`
 - `GET /health` - health-check endpoint
 
-The application listens on port `5001` by default.
+The application listens on port `5001` by default. This guide uses Docker for
+the complete workflow; Python and the packages in `requirements.txt` are
+installed inside the image and do not need to be installed on the host.
 
-## Run directly with Python
+## Prerequisites
 
-Python 3 with `venv` support is required. From the project root, create a
-virtual environment:
+Install Docker for your operating system and ensure the Docker daemon is
+running. For the Kubernetes workflow, also install Minikube, `kubectl`, and
+Helm.
 
-```bash
-python -m venv .venv
-```
-
-Use `python3` instead of `python` if that is the Python executable on your
-system. Activate the virtual environment on Linux or macOS:
+Verify Docker before continuing:
 
 ```bash
-source .venv/bin/activate
-```
-
-Or activate it in Windows PowerShell:
-
-```powershell
-.venv\Scripts\Activate.ps1
-```
-
-Then install the dependencies and run the application:
-
-```bash
-python -m pip install -r requirements.txt
-python app.py
-```
-
-Open <http://localhost:5001> or test from the terminal:
-
-```bash
-curl http://localhost:5001
-curl http://localhost:5001/health
+docker version
 ```
 
 ## Run with Docker
@@ -53,10 +31,18 @@ docker build -t flask-aws-monitor:local .
 docker run --rm -p 5001:5001 flask-aws-monitor:local
 ```
 
-## Deploy locally with Minikube and Helm
+Keep that terminal open and browse to <http://localhost:5001>, or test the
+container from another terminal:
+
+```bash
+curl http://localhost:5001
+curl http://localhost:5001/health
+```
+
+## Deploy with Minikube, Docker, and Helm
 
 Run every command in this section from the directory that contains
-`Dockerfile`, `app.py`, and `helmchart` (the project root). Ensure Docker,
+`Dockerfile`, `app.py`, and `chart` (the project root). Ensure Docker,
 Minikube, `kubectl`, and Helm are installed before continuing.
 
 ### 1. Start and verify Minikube
@@ -87,10 +73,10 @@ docker.io/library/flask-aws-monitor:local
 ### 3. Validate and install the Helm chart
 
 ```bash
-helm lint ./helmchart
-helm template flask-monitor ./helmchart
+helm lint ./chart
+helm template flask-monitor ./chart
 
-helm upgrade --install flask-monitor ./helmchart --reset-values
+helm upgrade --install flask-monitor ./chart --reset-values
 ```
 
 The informational message `Chart.yaml: icon is recommended` from `helm lint`
@@ -117,7 +103,7 @@ The `flask-monitor-cm` ConfigMap supplies `PORT`, `GUNICORN_WORKERS`, and
 while preserving the current Service and Ingress settings, run for example:
 
 ```bash
-helm upgrade flask-monitor ./helmchart --reuse-values --set config.gunicorn_workers=3 --set config.gunicorn_threads=4
+helm upgrade flask-monitor ./chart --reuse-values --set config.gunicorn_workers=3 --set config.gunicorn_threads=4
 ```
 
 The Deployment checksum changes automatically when the ConfigMap changes, so
@@ -137,7 +123,7 @@ A `LoadBalancer` Service keeps its internal `ClusterIP` access and also adds an
 external address. Install or update the release with:
 
 ```bash
-helm upgrade --install flask-monitor ./helmchart --reset-values --set service_type=LoadBalancer
+helm upgrade --install flask-monitor ./chart --reset-values --set service_type=LoadBalancer
 ```
 
 Run the Minikube tunnel in a separate terminal and keep it open:
@@ -183,7 +169,7 @@ minikube addons enable ingress
 Enable the chart's Ingress resource:
 
 ```bash
-helm upgrade --install flask-monitor ./helmchart --reset-values --set ingress.enabled=true
+helm upgrade --install flask-monitor ./chart --reset-values --set ingress.enabled=true
 ```
 
 Wait for the Ingress to become ready:
@@ -242,6 +228,6 @@ kubectl logs -l app=flask-monitor --all-containers=true --prefix --previous --ta
 
 ```bash
 helm history flask-monitor
-helm upgrade flask-monitor ./helmchart --reuse-values
+helm upgrade flask-monitor ./chart --reuse-values
 helm rollback flask-monitor REVISION
 ```

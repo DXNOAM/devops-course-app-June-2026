@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    app: {{ .Release.Name }}
+    {{- include "flask-aws-monitor.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  replicas: {{ .Values.replicas }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+      labels:
+        app: {{ .Release.Name }}
+        {{- include "flask-aws-monitor.labels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ .Release.Name }}
+          image: "{{ .Values.pod.image }}:{{ .Values.pod.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.pod.pull_policy }}
+          ports:
+            - containerPort: {{ .Values.pod.target_port }}
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-cm
