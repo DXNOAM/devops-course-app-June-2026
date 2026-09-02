@@ -15,7 +15,7 @@ pipeline {
         stage('Build') { //[cite: 1, 2]
             steps {
                 script {
-                    // קריאה לפונקציית הבנייה תוך העברת שם האפליקציה
+                    // 
                     myLibrary.buildApp(env.APP_NAME) //[cite: 2]
                 }
             }
