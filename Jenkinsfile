@@ -1,7 +1,7 @@
 pipeline {
     agent any
 
-    // 1. הגדרת משתני סביבה - שימוש ב-ENV עבור שם האפליקציה
+    // ENV
     environment {
         APP_NAME = 'my-flask-app'
     }
@@ -14,41 +14,41 @@ pipeline {
             }
         }
         
-        // שלב הבדיקות שונה כדי להריץ משימות במקביל
+        // Check
         stage('Parallel Tests') {
-            // הוספת failFast מומלצת: אם בדיקה אחת נכשלת, הכל נעצר כדי לחסוך משאבים
+            //
             failFast true 
             parallel {
                 stage('Unit Tests') {
                     steps {
                         echo 'Running Unit Tests...'
-                        // פקודות עבור Unit Tests (למשל pytest)
+                        //
                     }
                 }
                 stage('Security & Linting') {
                     steps {
                         echo 'Running Code Analysis and Security Scans...'
-                        // פקודות עבור סריקות קוד (למשל flake8 או סריקות אבטחה)
+                        //
                     }
                 }
             }
         }
         
-        // החלפנו את התוכן של שלב ה-Deploy כדי שיבצע את ההעלאה בפועל
+        // Deploy
         stage('Deploy') {
             steps {
                 echo 'Deploying to Docker Hub...'
                 
-                // 4. שימוש ב-Jenkins Credentials שהגדרת כדי לאפשר גישה בטוחה
+                // 4. Jenkins Credentials
                 withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                     
-                    // התחברות מאובטחת ל-Docker Hub באמצעות המשתנים מההרשאה
+                    // Login Docker Hub
                     sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
                     
-                    // 2+3. בניית ה-Image עם שם האפליקציה ומספר הבילד הנוכחי בתור תג
+                    // Build Image For Docker Hub
                     sh "docker build -t ${DOCKER_USER}/${env.APP_NAME}:${env.BUILD_NUMBER} ."
                     
-                    // העלאת ה-Image ל-Docker Hub
+                    // Upload Image Docker Hub
                     sh "docker push ${DOCKER_USER}/${env.APP_NAME}:${env.BUILD_NUMBER}"
                 }
             }
