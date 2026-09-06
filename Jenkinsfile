@@ -17,10 +17,10 @@ podTemplate(containers: [
             }
         } // end checkout
 
-        // trivy
+        // Scan & build
         parallel(
-            'Security Scan': {
-                stage('Security Scan') {
+            'FS Scan': {
+                stage('FS Scan') {
                     container('trivy') {
                         echo "Running Trivy File System scan..."
                         sh "trivy fs ."
@@ -36,10 +36,22 @@ podTemplate(containers: [
                         echo "Building docker image..."
                         sh "docker build -t ${appimage}:${apptag} ."
                         sh "docker tag ${appimage}:${apptag} ${appimage}:latest"
+                        
+                        //Save Image
+                        echo "Saving image to tarball for scanning..."
+                        sh "docker save -o image.tar ${appimage}:${apptag}"
                     }
                 }
             }
         ) // end parallel
+
+        // another scan
+        stage('Image Scan') {
+            container('trivy') {
+                echo "Running Trivy Image scan..."
+                sh "trivy image --input image.tar"
+            }
+        } // end image scan
 
         stage('push') {
             container('docker') {
