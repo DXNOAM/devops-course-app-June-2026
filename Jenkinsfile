@@ -6,7 +6,8 @@ def apptag = "${env.BUILD_NUMBER}"
 podTemplate(containers: [
       containerTemplate(name: 'jnlp', image: 'jenkins/inbound-agent', ttyEnabled: true),
       containerTemplate(name: 'docker', image: 'docker:dind', ttyEnabled: true, privileged: true),
-      containerTemplate(name: 'trivy', image: 'aquasec/trivy:latest', command: 'cat', ttyEnabled: true)
+      containerTemplate(name: 'trivy', image: 'aquasec/trivy:latest', command: 'cat', ttyEnabled: true),
+      containerTemplate(name: 'helm', image: 'alpine/helm:latest', command: 'cat', ttyEnabled: true)
   ])
   {
     node(POD_LABEL) {
@@ -17,7 +18,6 @@ podTemplate(containers: [
             }
         } // end checkout
 
-        // Scan & build
         parallel(
             'FS Scan': {
                 stage('FS Scan') {
@@ -37,7 +37,6 @@ podTemplate(containers: [
                         sh "docker build -t ${appimage}:${apptag} ."
                         sh "docker tag ${appimage}:${apptag} ${appimage}:latest"
                         
-                        //Save Image
                         echo "Saving image to tarball for scanning..."
                         sh "docker save -o image.tar ${appimage}:${apptag}"
                     }
@@ -45,7 +44,6 @@ podTemplate(containers: [
             }
         ) // end parallel
 
-        // another scan
         stage('Image Scan') {
             container('trivy') {
                 echo "Running Trivy Image scan..."
@@ -63,5 +61,13 @@ podTemplate(containers: [
               }
             }
         } //end push
+
+        stage('Deploy') {
+            container('helm') {
+                echo "Generating Helm template..."
+                sh "helm template ${appname} ./chart > ${appname}.yaml"
+                sh "ls -l ${appname}.yaml"
+            }
+        } // end deploy
     }
 }
