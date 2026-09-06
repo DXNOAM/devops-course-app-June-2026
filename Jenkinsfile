@@ -1,11 +1,12 @@
-def appname = "my-flask-app"
-def repo = "noamyonassi"  // Replace with your DockerHub username
+def appname = "flask-aws-monitor"
+def repo = "noamyonassi"
 def appimage = "${repo}/${appname}"
 def apptag = "${env.BUILD_NUMBER}"
 
 podTemplate(containers: [
       containerTemplate(name: 'jnlp', image: 'jenkins/inbound-agent', ttyEnabled: true),
-      containerTemplate(name: 'docker', image: 'docker:dind', ttyEnabled: true, privileged: true)
+      containerTemplate(name: 'docker', image: 'docker:dind', ttyEnabled: true, privileged: true),
+      containerTemplate(name: 'trivy', image: 'aquasec/trivy:latest', command: 'cat', ttyEnabled: true)
   ])
   {
     node(POD_LABEL) {
@@ -14,18 +15,31 @@ podTemplate(containers: [
               sh '/usr/bin/git config --global http.sslVerify false'
               checkout scm
             }
-        }
+        } // end checkout
 
-        stage('build') {
-            container('docker') {
-              echo "Waiting for Docker daemon to start..."
-              sleep 5
-              
-              echo "Building docker image..."
-              sh "docker build -t ${appimage}:${apptag} ."
-              sh "docker tag ${appimage}:${apptag} ${appimage}:latest"
+        // trivy
+        parallel(
+            'Security Scan': {
+                stage('Security Scan') {
+                    container('trivy') {
+                        echo "Running Trivy File System scan..."
+                        sh "trivy fs ."
+                    }
+                }
+            },
+            'Build': {
+                stage('Build Image') {
+                    container('docker') {
+                        echo "Waiting for Docker daemon to start..."
+                        sleep 5
+                        
+                        echo "Building docker image..."
+                        sh "docker build -t ${appimage}:${apptag} ."
+                        sh "docker tag ${appimage}:${apptag} ${appimage}:latest"
+                    }
+                }
             }
-        }
+        ) // end parallel
 
         stage('push') {
             container('docker') {
@@ -36,6 +50,6 @@ podTemplate(containers: [
                   sh "docker push ${appimage}:latest"
               }
             }
-        }
+        } //end push
     }
 }
