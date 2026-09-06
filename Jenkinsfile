@@ -1,4 +1,4 @@
-def appname = "flask-aws-monitor"
+def appname = "my-flask-app"
 def repo = "noamyonassi"  // Replace with your DockerHub username
 def appimage = "${repo}/${appname}"
 def apptag = "${env.BUILD_NUMBER}"
