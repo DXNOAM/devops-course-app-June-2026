@@ -1,6 +1,8 @@
 name: trivy-scan
 
 on:
+  push:
+  pull_request:
   workflow_dispatch:
 
 jobs:
@@ -12,13 +14,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Trivy CLI
-        uses: ankurk91/install-trivy-cli-action@v2
-        with:
-          version: latest
-          cache: true
+        uses: aquasecurity/setup-trivy@v0.2.0
 
-      - name: Verify Trivy installation
+      - name: Print Trivy version
         run: trivy --version
 
-      - name: Run Trivy filesystem scan
-        run: trivy fs --severity HIGH,CRITICAL --exit-code 1 .
+      - name: Scan repository filesystem
+        run: trivy fs . --severity HIGH,CRITICAL --exit-code 1
