@@ -3,9 +3,10 @@ service_type: ClusterIP
 replicas: 2
 
 pod:
-  image: flask-aws-monitor
-  tag: local
-  pull_policy: IfNotPresent
+  image: noamyonassi/flask-aws-monitor
+  # Jenkins overrides this with the BUILD_NUMBER tag pushed by the pipeline.
+  tag: "latest"
+  pull_policy: Always
   target_port: 5001
   port: 5001
 

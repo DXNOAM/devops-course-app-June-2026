@@ -65,7 +65,7 @@ podTemplate(containers: [
         stage('Deploy') {
             container('helm') {
                 echo "Generating Helm template..."
-                sh "helm template ${appname} ./chart > ${appname}.yaml"
+                sh "helm template ${appname} ./chart --set-string pod.image=${appimage} --set-string pod.tag=${apptag} > ${appname}.yaml"
                 sh "ls -l ${appname}.yaml"
             }
         } // end deploy
