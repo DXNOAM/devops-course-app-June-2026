@@ -27,12 +27,12 @@ and also pushes the `latest` tag. The chart defaults to
 The pipeline passes its exact image repository and build tag to Helm:
 
 ```groovy
-sh "helm template ${appname} ./chart --set-string pod.image=${appimage} --set-string pod.tag=${apptag} > ${appname}.yaml"
+sh "helm template ${appname} ./chart --namespace ${qaNamespace} --set-string pod.image=${appimage} --set-string pod.tag=${apptag} > ${manifest}"
 ```
 
 For example, build `42` generates a Deployment using
-`noamyonassi/flask-aws-monitor:42`. This step generates a manifest; it does
-not apply it to a Kubernetes cluster.
+`noamyonassi/flask-aws-monitor:42`. On `main`, Jenkins publishes the
+manifest to the GitOps repository for Argo CD to sync to QA.
 
 The image settings for each workflow are:
 
@@ -56,6 +56,10 @@ container. Add a username/password credential with the ID
 `dockerhub-credentials`; use a Docker Hub username and access token with
 permission to push to `noamyonassi/flask-aws-monitor`.
 
+Add a separate username/password credential named `gitops-credentials`,
+using a GitHub username and a token with write access to `DXNOAM/gitops`.
+The pipeline uses the Jenkins Git tool named `Default`.
+
 The pipeline:
 
 1. Checks out the repository.
@@ -63,9 +67,9 @@ The pipeline:
 3. Scans the built image from `image.tar`.
 4. Pushes the build-number tag and `latest` to Docker Hub.
 5. Renders `flask-aws-monitor.yaml` using the same build-number tag.
+6. For builds of the application's `main` branch, commits and pushes it to
+   `workloads/qa/flask-aws-monitor/app.yaml` on `DXNOAM/gitops:main`.
 
-The `Deploy` stage currently runs `helm template`, not `helm upgrade` or
-`kubectl apply`. To deploy a published build, use the Helm commands below.
 `Jenkinsfile.docker` is an alternate pipeline that depends on
 `my-shared-library`; it is not the pipeline described here.
 
@@ -73,6 +77,22 @@ The GitHub Actions workflow in `.github/workflows/trivy.yaml` also scans
 the repository on pushes, pull requests, and manual runs. That scan uses
 `--severity HIGH,CRITICAL --exit-code 1`. Jenkins uses Trivy's default scan
 options.
+
+### Connect Argo CD to the QA manifest
+
+Run a successful Jenkins build of `main` first to create the manifest in
+the GitOps repository. Then apply the updated `systems-qa` ApplicationSet
+from that repository, or sync the Argo CD application that manages it.
+The ApplicationSet must use `DXNOAM/gitops:main` and the path
+`workloads/qa/flask-aws-monitor` for the Flask application.
+
+Argo CD automatically syncs `flask-aws-monitor-qa` into the namespace of
+the same name. Verify that it is `Synced` and `Healthy` and that the
+Deployment uses the build tag from the Jenkins log:
+
+```bash
+kubectl -n flask-aws-monitor-qa get deployment flask-aws-monitor -o 'custom-columns=IMAGE:.spec.template.spec.containers[0].image'
+```
 
 ## Prerequisites
 
